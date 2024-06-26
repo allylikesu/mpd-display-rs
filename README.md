@@ -21,7 +21,7 @@ Only tested on Linux. Requires MPC.
 ## Features
 - Toggleable fullscreen with the `f` key
 - Fully reactive window, all screen elements will be properly scaled/positioned
-- Artist-specific background art (See more [here](#obtaining-and-using-background-images-from-spotify))
+- Artist-specific background art (See more [here](#obtaining-and-using-artist-background-images-from-spotify))
 - Design basically fully ripped off of the Spotify desktop client's fullscreen mode
 - Click or press space to play/pause
 - "Up Next" display when current song hits 90% completion
