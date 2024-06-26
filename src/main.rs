@@ -12,11 +12,10 @@ use speedy2d::font::{Font, FormattedTextBlock, TextLayout, TextOptions};
 use speedy2d::image::{ImageHandle, ImageFileFormat, ImageSmoothingMode};
 use mpd::Client;
 use mpd::status::Status;
-use mpd::song::{Song, Id};
-use log::{info, trace, warn};
+use mpd::song::Song;
+use log::info;
 
 struct MyWindowHandler {
-    linewidth: f32,
     width: u32,
     height: u32,
     fullscreen: bool,
@@ -157,10 +156,6 @@ impl egui_speedy2d::WindowHandler for MyWindowHandler {
             }
         };
         // draw ALBUMART
-        let album_image_size = match &self.image_album {
-            None => UVec2::new(1,1),
-            Some(handle) => handle.size().clone(),
-        };
         let album_resize_value = min(self.height, self.width) as f32 / 3.0;
         let album_y_offset = self.height as f32 / 6.0 * 5.0 - album_resize_value;
         let album_x_offset = self.width as f32 / 16.0;
@@ -259,7 +254,6 @@ impl egui_speedy2d::WindowHandler for MyWindowHandler {
         // draw UPNEXT
         if song_percentage >= 0.9 {
             let next_offset_y = self.height as f32 / 20.0;
-            //let next_offset_x = (self.width as i32 - max(self.text_upnext.as_ref().unwrap().width() as i32, self.text_next_song.as_ref().unwrap().width() as i32) - self.width as i32) as f32 / 30.0;
             let next_offset_x = self.width as f32 - max(self.text_upnext.as_ref().unwrap().width() as i32, self.text_next_song.as_ref().unwrap().width() as i32) as f32 - self.width as f32 / 30.0;
             let barratio = song_percentage * 10.0 - 9.0;
             let baroffset = (self.width as f32 - next_offset_x)*barratio;
@@ -271,12 +265,6 @@ impl egui_speedy2d::WindowHandler for MyWindowHandler {
             graphics.draw_rounded_rectangle(barrect, self.text_color_foreground);
         }
 
-        /*if self.linewidth >= self.width as f32 {
-            self.linewidth = 0.0;
-        } else {
-            self.linewidth += 2.0;
-        }
-        graphics.draw_line((0.0,0.0), (self.linewidth, 0.0), 10.0, Color::RED);*/
         //GUI
         // egui window
         if self.show_debug_window {
@@ -304,8 +292,12 @@ impl egui_speedy2d::WindowHandler for MyWindowHandler {
         _egui_ctx: &egui::Context,
     ) {
         match keycode {
-            // F: Toggle fullscreen
+            // F/F11: Toggle fullscreen
             Some(VirtualKeyCode::F) => {
+                self.fullscreen = !self.fullscreen;
+                self.update_fullscreen(helper);
+            },
+            Some(VirtualKeyCode::F11) => {
                 self.fullscreen = !self.fullscreen;
                 self.update_fullscreen(helper);
             },
@@ -326,6 +318,9 @@ impl egui_speedy2d::WindowHandler for MyWindowHandler {
             },
 
             Some(VirtualKeyCode::Escape) => {
+                helper.terminate_loop();
+            },
+            Some(VirtualKeyCode::Q) => {
                 helper.terminate_loop();
             },
             _ => {},
@@ -393,11 +388,8 @@ impl MyWindowHandler {
         helper.set_fullscreen_mode(fullscreen_mode);
     }
 
-    // Runs every time the window is resized
+    // Runs every time the window is resized and every time the song changes
     fn update_text(&mut self) {
-        //text_payingfromqueue
-        // PLAYING FROM MPD QUEUE size: height / 27
-        // "X tracks left" size: height / 36
         let (title, artist) = match &self.current_song {
             Some(song) => (song.title.clone().get_or_insert(song.file.clone()).to_owned(), song.artist.clone().get_or_insert("".to_owned()).to_owned()),
             None => ("Nothing playing".to_owned(), "".to_owned()),
@@ -433,13 +425,6 @@ impl MyWindowHandler {
     }
 
     fn init_images(&mut self, ctx: &mut Graphics2D) {
-        /*self.image_background = match ctx.create_image_from_file_path(None, ImageSmoothingMode::Linear, Path::new("./artists/temp.png")) {
-            Ok(handle) => Some(handle),
-            Err(e) => {
-                println!("error initializing background image: {}", e);
-                None
-            },
-        };*/
         self.image_watermark = match ctx.create_image_from_file_path(Some(ImageFileFormat::PNG), ImageSmoothingMode::Linear, Path::new("./assets/logo.png")) {
             Ok(handle) => Some(handle),
             Err(e) => {
@@ -519,7 +504,6 @@ impl MyWindowHandler {
                     .arg(song.file.clone())
                     .output() {
                         Ok(output) => {
-                            //output.stdout
                             match ctx.create_image_from_file_bytes(None, ImageSmoothingMode::Linear, Cursor::new(output.stdout)) {
                                 Ok(handle) => Some(handle),
                                 Err(e) => {
@@ -533,24 +517,6 @@ impl MyWindowHandler {
                             self.backup_album_image.clone()
                         },
                 };
-                /*let albumart = match self.mpd_client.albumart(song) {
-                    Ok(data) => {
-                        match ctx.create_image_from_file_bytes(None, ImageSmoothingMode::Linear, Cursor::new(data)) {
-                            Ok(handle) => {
-                                handle
-                            }
-                            Err(e) => {
-                                println!("Failed to init album art: {}", e);
-                                ctx.create_image_from_file_path(Some(ImageFileFormat::PNG), ImageSmoothingMode::Linear, Path::new("./assets/art_backup")).unwrap()
-                            }
-                        }
-                    },
-                    Err(e) => {
-                        println!("Failed to obtain album image data: {:?}", e);
-                        ctx.create_image_from_file_path(Some(ImageFileFormat::PNG), ImageSmoothingMode::Linear, Path::new("./assets/art_backup")).unwrap()
-                    }
-                };
-                self.image_album = Some(albumart);*/
             },
             None => {
                 self.image_background = None;
@@ -564,8 +530,33 @@ impl MyWindowHandler {
 fn main() {
     simple_logger::SimpleLogger::new().init().unwrap();
 
+    let mpd_host = match std::env::var("MPD_HOST") {
+        Ok(val) => val,
+        Err(_) => "localhost".to_owned(),
+    };
+    let mpd_port = match std::env::var("MPD_PORT") {
+        Ok(val) => val,
+        Err(_) => "6600".to_owned(),
+    };
+    let mpd_pass: String;
+    let mut mpd_host_split = mpd_host.split("@");
+    let mut mpd_host = mpd_host_split.next().unwrap().to_owned();
+    (mpd_host, mpd_pass) = match mpd_host_split.next() {
+        Some(host) => {
+            (host.to_owned(), mpd_host)
+        },
+        None => {
+            (mpd_host, "".to_owned())
+        }
+    };
+    //info!("Host: {}, Port: {}, Pass: {}", mpd_host, mpd_port, mpd_pass);
+
+
     info!("Starting MPD connection and initializing client");
-    let mut mpd_client = Client::connect("localhost:6600").unwrap();
+    let mut mpd_client = Client::connect(format!("{}:{}", mpd_host, mpd_port)).unwrap();
+    if mpd_pass != "" {
+        let _ = mpd_client.login(&mpd_pass);
+    }
     let mpd_status = mpd_client.status().unwrap();
     let (current_song, current_song_id) = match mpd_status.song {
         Some(queue_place) => {
@@ -588,7 +579,6 @@ fn main() {
 
 
     window.run_loop(egui_speedy2d::WindowWrapper::new(MyWindowHandler{
-        linewidth: 0.0,
         width: 0,
         height: 0,
         fullscreen: true,

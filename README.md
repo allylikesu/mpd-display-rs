@@ -14,18 +14,19 @@ This is a replacement for my old [mpd-display](https://github.com/allylikesu/mpd
 - Doesn't work properly under Wayland, must be launched with WINIT_UNIX_BACKEND=x11 ([speedy2d issue](https://github.com/QuantumBadger/Speedy2D/issues/112))
 - I used a lot of `unwrap()` on calls to mpd instead of proper error handling, so random crashes may be more common. I'll work on it.
 - Too lazy to implement the background gradient based on album art colors if there is no background image found for the current artist, I think the default grey background looks fine.
-- Doesn't use MPD_HOST and MPD_PORT env variables (I'll fix this soon)
 
 Only tested on Linux. Requires MPC.
 
 ## Features
-- Toggleable fullscreen with the `f` key
+- Toggleable fullscreen with the `f` or `F11` key
 - Fully reactive window, all screen elements will be properly scaled/positioned
 - Artist-specific background art (See more [here](#obtaining-and-using-artist-background-images-from-spotify))
 - Design basically fully ripped off of the Spotify desktop client's fullscreen mode
 - Click or press space to play/pause
 - "Up Next" display when current song hits 90% completion
-- Easy to quit with `Esc`
+- Easy to quit with `Esc` or `q`
+- Toggle cursor visibility with `c`
+- Toggle a useless debug window with `d`
 
 ## Screenshots
 ![image](img/1.png)
@@ -44,6 +45,8 @@ Only tested on Linux. Requires MPC.
 
 ## Installation/Usage
 I'm too lazy to figure out how to make a proper cargo package.
+
+This program uses the environment variables MPD_HOST and MPD_PORT to connect to your MPD server. If these are not set, they default to localhost:6600. If your server has a password, MPD_HOST is formatted as pass@ip.
 
 Clone the repo, run `cargo build --release`, then create a startup script to execute the binary in the crate directory:
 ```
