@@ -21,7 +21,7 @@ Only tested on Linux. Requires MPC.
 ## Features
 - Toggleable fullscreen with the `f` key
 - Fully reactive window, all screen elements will be properly scaled/positioned
-- Artist-specific background art (See more [here](#obtaining-and-using-background-images))
+- Artist-specific background art (See more [here](#obtaining-and-using-background-images-from-spotify))
 - Design basically fully ripped off of the Spotify desktop client's fullscreen mode
 - Click or press space to play/pause
 - "Up Next" display when current song hits 90% completion
@@ -57,7 +57,7 @@ The file name should be in **ALL LOWERCASE!**
 Obtaining profile banners from Spotify is simple but a little annoying. 
 1. navigate to the artist's profile on the Spotify web client. Using Firefox might not work, I had to do this in Chromium.
 2. Press `Ctrl+Shift+I` to enter the developer console and inspect the element of the page.
-3. Press `Ctrl+F` to open the search prompt. Search for `"background-image:`. The first result should look like this.
+3. Press `Ctrl+F` to open the search prompt. Search for `"background-image:` (Note the quote and colon!). The first result should look like this.
 ![image](img/background.png)
 4. Copy the i.scdn.co link. This is the link to the image. Make sure to *NOT* copy the `&quot;` before and after the link.
 ![image](img/background2.png)
